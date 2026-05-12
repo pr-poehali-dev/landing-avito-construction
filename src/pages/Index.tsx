@@ -204,6 +204,186 @@ function Section({ children, id, className = "", style }: { children: React.Reac
   );
 }
 
+function HeroSection() {
+  const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [heroDone, setHeroDone] = useState(false);
+
+  function submitHero() {
+    if (!isValidPhone(phone)) { setPhoneError("Введите корректный номер"); return; }
+    setHeroDone(true);
+  }
+
+  return (
+    <section
+      className="relative overflow-hidden"
+      style={{
+        background: "linear-gradient(135deg, #0a1628 0%, #0d1e3e 55%, #111a35 100%)",
+        paddingTop: "clamp(3rem, 7vw, 5.5rem)",
+        paddingBottom: "clamp(3rem, 7vw, 5.5rem)",
+      }}
+    >
+      {/* background decor */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden>
+        <div style={{ position: "absolute", top: "-10%", left: "-5%", width: 480, height: 480, borderRadius: "50%", background: "radial-gradient(circle, rgba(212,175,55,0.07) 0%, transparent 65%)" }} />
+        <div style={{ position: "absolute", bottom: "-15%", right: "-5%", width: 560, height: 560, borderRadius: "50%", background: "radial-gradient(circle, rgba(240,123,29,0.06) 0%, transparent 65%)" }} />
+        <div style={{ position: "absolute", top: 0, left: "55%", width: 1, height: "100%", background: "linear-gradient(to bottom, transparent, rgba(212,175,55,0.08), transparent)" }} />
+      </div>
+
+      <div className="max-w-6xl mx-auto px-5 md:px-10 relative">
+        <div className="grid lg:grid-cols-[1fr_420px] gap-10 xl:gap-16 items-center">
+
+          {/* ── LEFT ── */}
+          <div>
+            <GoldLabel>Авито-маркетинг для строительного бизнеса</GoldLabel>
+
+            <h1
+              className="font-oswald font-bold text-white mb-4 leading-[1.05]"
+              style={{ fontSize: "clamp(2rem, 5vw, 3.8rem)", letterSpacing: "-0.02em" }}
+            >
+              ЗАПУСКАЕМ АВИТО<br />
+              <span style={{ color: "var(--c-orange)" }}>«ПОД КЛЮЧ»</span><br />
+              НА СТРОИТЕЛЬНЫЕ УСЛУГИ
+            </h1>
+
+            <p className="font-golos font-semibold text-lg md:text-xl mb-8" style={{ color: "var(--c-orange)" }}>
+              Первые целевые заявки уже через 3 дня от 150 ₽
+            </p>
+
+            {/* services */}
+            <div className="mb-8">
+              <p className="font-golos text-sm mb-3 uppercase tracking-widest" style={{ color: "var(--c-muted)" }}>Клиенты на:</p>
+              <div className="flex flex-wrap gap-2">
+                {["Натяжные потолки", "Каркасные дома", "Штукатурку и отделку", "Кровлю", "Фасады", "Ремонт под ключ"].map((s) => (
+                  <span
+                    key={s}
+                    className="font-golos text-sm px-3 py-1.5 rounded-full"
+                    style={{ border: "1px solid rgba(255,255,255,0.13)", color: "rgba(255,255,255,0.75)", background: "rgba(255,255,255,0.04)" }}
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* badges */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-8">
+              <div
+                className="flex items-center gap-3 px-5 py-3 rounded-xl flex-1"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+              >
+                <span className="text-xl">🛡️</span>
+                <span className="font-golos text-sm text-white leading-snug">Гарантия получения<br /><span style={{ color: "var(--c-gold)" }}>качественных заявок</span></span>
+              </div>
+              <div
+                className="flex items-center gap-3 px-5 py-3 rounded-xl flex-1"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+              >
+                <span className="text-xl">🎯</span>
+                <span className="font-golos text-sm text-white leading-snug">Индивидуальный подход<br /><span style={{ color: "var(--c-gold)" }}>под ваш бизнес</span></span>
+              </div>
+            </div>
+
+            <p className="font-golos text-sm" style={{ color: "var(--c-muted)" }}>
+              Ваш надёжный партнёр для бизнеса на Авито
+            </p>
+          </div>
+
+          {/* ── RIGHT: FORM ── */}
+          <div
+            className="rounded-2xl p-7 md:p-8"
+            style={{
+              background: "rgba(15,28,56,0.85)",
+              backdropFilter: "blur(16px)",
+              border: "1px solid rgba(212,175,55,0.22)",
+              boxShadow: "0 20px 35px -10px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06)",
+            }}
+          >
+            {heroDone ? (
+              <div className="text-center py-8">
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5"
+                  style={{ background: "linear-gradient(135deg, var(--c-gold), var(--c-orange))" }}
+                >
+                  <Icon name="Check" size={28} style={{ color: "#0a1628" }} />
+                </div>
+                <h3 className="font-oswald text-2xl font-bold text-white mb-2">Принято!</h3>
+                <p className="font-golos text-sm leading-relaxed" style={{ color: "var(--c-muted)" }}>
+                  Перезвоним в течение<br />
+                  <span className="text-white font-semibold">15 минут</span>
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* pain */}
+                <p
+                  className="font-golos font-bold text-base mb-5 pb-5 text-white leading-snug"
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  Платите за рекламу —<br />а заявок нет?
+                </p>
+
+                {/* form header */}
+                <p className="font-oswald font-semibold text-white mb-1" style={{ fontSize: "1.25rem" }}>
+                  Запишитесь на бесплатный разбор
+                </p>
+                <p className="font-golos text-sm mb-6" style={{ color: "var(--c-muted)" }}>
+                  Покажу, где деньги сливаются и как окупить вложения минимум ×3
+                </p>
+
+                {/* phone input */}
+                <div className="relative mb-4">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <Icon name="Phone" size={16} style={{ color: "var(--c-muted)" }} />
+                  </div>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => { setPhone(formatPhone(e.target.value)); setPhoneError(""); }}
+                    placeholder="+7 (___) ___-__-__"
+                    className="w-full pl-11 pr-4 py-4 rounded-xl font-golos text-base text-white outline-none border"
+                    style={{
+                      background: "rgba(255,255,255,0.07)",
+                      borderColor: phoneError ? "#ef4444" : "rgba(255,255,255,0.14)",
+                      transition: "border-color 0.2s",
+                    }}
+                    onFocus={(e) => { if (!phoneError) (e.target as HTMLInputElement).style.borderColor = "rgba(212,175,55,0.6)"; }}
+                    onBlur={(e) => { if (!phoneError) (e.target as HTMLInputElement).style.borderColor = "rgba(255,255,255,0.14)"; }}
+                  />
+                </div>
+                {phoneError && <p className="font-golos text-xs text-red-400 mb-3 -mt-2">{phoneError}</p>}
+
+                {/* CTA button */}
+                <button
+                  onClick={submitHero}
+                  className="btn-gold w-full py-4 rounded-xl font-oswald text-base font-semibold tracking-wide mb-4"
+                  style={{
+                    background: "linear-gradient(135deg, var(--c-orange) 0%, #e55c00 100%)",
+                    color: "#fff",
+                    transition: "all 0.2s",
+                    boxShadow: "0 6px 20px rgba(240,123,29,0.4)",
+                  }}
+                >
+                  Получить разбор
+                </button>
+
+                {/* reassurance */}
+                <div className="flex items-center justify-center gap-2">
+                  <Icon name="Clock" size={14} style={{ color: "var(--c-muted)" }} />
+                  <span className="font-golos text-xs" style={{ color: "var(--c-muted)" }}>
+                    Отвечаю в течение 15 минут
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Index() {
   const [priceFormDone, setPriceFormDone] = useState(false);
   const [consultFormDone, setConsultFormDone] = useState(false);
@@ -247,44 +427,7 @@ export default function Index() {
       </header>
 
       {/* HERO */}
-      <section className="relative overflow-hidden py-24 md:py-36" style={{ background: "linear-gradient(135deg, #0a1628 0%, #0e1f40 60%, #131b38 100%)" }}>
-        <div className="absolute inset-0 pointer-events-none" aria-hidden>
-          <div className="absolute top-0 right-0 w-96 h-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(212,175,55,0.12) 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
-          <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full" style={{ background: "radial-gradient(circle, rgba(26,58,122,0.5) 0%, transparent 70%)", transform: "translate(-30%, 30%)" }} />
-          <div className="absolute top-0 right-1/4 w-px h-full opacity-5" style={{ background: "var(--c-gold)", transform: "rotate(12deg)", transformOrigin: "top" }} />
-        </div>
-        <div className="max-w-6xl mx-auto px-5 md:px-10 relative">
-          <div className="max-w-3xl">
-            <GoldLabel>Авито-маркетинг для строительного бизнеса</GoldLabel>
-            <h1 className="font-oswald font-bold leading-none mb-6" style={{ fontSize: "clamp(2.4rem, 6vw, 4.5rem)", color: "#fff", letterSpacing: "-0.02em" }}>
-              ЗАПУСКАЕМ АВИТО<br />
-              <span style={{ color: "var(--c-gold)" }}>ПОД КЛЮЧ</span><br />
-              НА СТРОИТЕЛЬНЫЕ УСЛУГИ
-            </h1>
-            <p className="font-golos text-xl md:text-2xl mb-8 font-medium" style={{ color: "var(--c-muted)" }}>
-              Первые целевые заявки уже через{" "}
-              <span className="text-white font-semibold">3 дня от 150 рублей</span>
-            </p>
-            <div className="flex flex-wrap gap-3 mb-10">
-              {["Натяжные потолки", "Каркасные дома", "Штукатурка", "Кровля", "Фасады", "Ремонт под ключ"].map((s) => (
-                <span key={s} className="font-golos text-sm px-4 py-2 rounded-full border" style={{ borderColor: "rgba(212,175,55,0.3)", color: "var(--c-gold)", background: "rgba(212,175,55,0.07)" }}>{s}</span>
-              ))}
-            </div>
-            <div className="inline-flex flex-wrap gap-6 mb-10 p-5 rounded-xl border" style={{ background: "rgba(255,255,255,0.03)", borderColor: "var(--c-border)" }}>
-              {[{ icon: "Shield", text: "Гарантия результата" }, { icon: "User", text: "Индивидуальный подход" }, { icon: "Clock", text: "Запуск за 72 часа" }].map(({ icon, text }) => (
-                <div key={text} className="flex items-center gap-2">
-                  <Icon name={icon} size={18} style={{ color: "var(--c-gold)" }} />
-                  <span className="font-golos text-sm text-white">{text}</span>
-                </div>
-              ))}
-            </div>
-            <button onClick={() => scrollTo("calc")} className="btn-gold inline-flex items-center gap-3 px-8 py-5 rounded-xl font-oswald text-lg font-semibold tracking-wide" style={{ background: "linear-gradient(135deg, var(--c-gold), var(--c-orange))", color: "#0a1628", transition: "all 0.2s", boxShadow: "0 8px 32px rgba(212,175,55,0.3)" }}>
-              Запишитесь на бесплатный разбор
-              <Icon name="ArrowRight" size={20} />
-            </button>
-          </div>
-        </div>
-      </section>
+      <HeroSection />
 
       {/* EXPERT */}
       <Section id="expert" style={{ background: "var(--c-surface)" }}>
