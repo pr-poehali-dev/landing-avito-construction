@@ -1,10 +1,35 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 
-const PHOTO = "https://cdn.poehali.dev/projects/90b70dcc-86cf-44ec-8c48-a0a856c1375f/files/5705d604-cab8-4db3-8fb6-4942e953ffd0.jpg";
+/* ─── assets ─────────────────────────────────────────────────────── */
+const BASE = "https://cdn.poehali.dev/projects/90b70dcc-86cf-44ec-8c48-a0a856c1375f/files/";
+const IMG = {
+  oleg:     BASE + "63d3c63e-eb14-43e2-919b-2d3dd9bf2c76.jpg",
+  house:    BASE + "b2af958e-7247-4f83-bf74-5a460cdc77d8.jpg",
+  ceiling:  BASE + "b92e4bb6-356b-4bb7-bfbc-30b278f209c6.jpg",
+  plaster:  BASE + "8fc3570b-b7c2-459a-ae41-5ff91808c002.jpg",
+  repair:   BASE + "8425d8a3-43a0-4aa1-b332-7f438123853d.jpg",
+};
 
-/* ── phone helpers ─────────────────────────────────────── */
-function fmt(v: string) {
+/* ─── design tokens ──────────────────────────────────────────────── */
+const C = {
+  bg:      "#F7F4EF",
+  white:   "#FFFFFF",
+  ink:     "#12100E",
+  ink2:    "#4A4540",
+  muted:   "#8C8480",
+  accent:  "#E8500A",
+  accentL: "#FF7A38",
+  gold:    "#C9A84C",
+  surface: "#FDFCFB",
+  border:  "#E8E4DE",
+  dark:    "#0F1C2E",
+};
+
+const font = "'Montserrat', sans-serif";
+
+/* ─── helpers ────────────────────────────────────────────────────── */
+function fmtPhone(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 11);
   if (!d) return "";
   let r = "+7";
@@ -16,302 +41,341 @@ function fmt(v: string) {
 }
 const validPhone = (p: string) => p.replace(/\D/g, "").length === 11;
 
-/* ── tiny reusable phone-field ─────────────────────────── */
-function PhoneField({
-  value, onChange, placeholder = "+7 (___) ___-__-__", error,
-}: { value: string; onChange: (v: string) => void; placeholder?: string; error?: string }) {
+/* ─── shared UI ──────────────────────────────────────────────────── */
+function Pill({ children, accent = false }: { children: React.ReactNode; accent?: boolean }) {
   return (
-    <div>
-      <div className="relative">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "#999" }}>
-          <Icon name="Phone" size={16} />
-        </span>
-        <input
-          type="tel" value={value}
-          onChange={e => onChange(fmt(e.target.value))}
-          placeholder={placeholder}
-          style={{
-            width: "100%", paddingLeft: 44, paddingRight: 16, paddingTop: 14, paddingBottom: 14,
-            borderRadius: 12, border: `1.5px solid ${error ? "#ef4444" : "#E5E5E5"}`,
-            background: "#F5F5F5", fontSize: 15, fontFamily: "Montserrat, sans-serif",
-            outline: "none", color: "#1A1A1A", transition: "border-color .2s",
-          }}
-          onFocus={e => { if (!error) e.target.style.borderColor = "#FF6B00"; }}
-          onBlur={e => { if (!error) e.target.style.borderColor = "#E5E5E5"; }}
-        />
-      </div>
-      {error && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 4 }}>{error}</p>}
-    </div>
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 6,
+      padding: "8px 16px", borderRadius: 99,
+      border: `1.5px solid ${accent ? C.accent : C.border}`,
+      background: accent ? `${C.accent}14` : C.white,
+      fontSize: 13, fontWeight: 500, color: accent ? C.accent : C.ink2,
+      fontFamily: font,
+    }}>
+      {children}
+    </span>
   );
 }
 
-/* ── checkbox ──────────────────────────────────────────── */
-function Agree({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", marginTop: 12 }}>
-      <input
-        type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
-        style={{ marginTop: 3, accentColor: "#FF6B00", width: 16, height: 16, flexShrink: 0 }}
-      />
-      <span style={{ fontSize: 12, color: "#999", lineHeight: 1.5 }}>
-        Нажимая кнопку, вы соглашаетесь с{" "}
-        <a href="#" style={{ color: "#FF6B00" }}>политикой обработки персональных данных</a>
-      </span>
-    </label>
-  );
-}
-
-/* ── orange button ─────────────────────────────────────── */
-function OrangeBtn({ children, onClick, full = false, disabled = false }: {
-  children: React.ReactNode; onClick?: () => void; full?: boolean; disabled?: boolean;
+function Btn({ children, onClick, full = false, variant = "orange", sm = false, disabled = false }: {
+  children: React.ReactNode; onClick?: () => void; full?: boolean;
+  variant?: "orange" | "ghost"; sm?: boolean; disabled?: boolean;
 }) {
+  const isOrange = variant === "orange";
   return (
-    <button
-      onClick={onClick} disabled={disabled}
-      style={{
-        width: full ? "100%" : undefined,
-        background: disabled ? "#ccc" : "linear-gradient(135deg, #FF6B00, #e55a00)",
-        color: "#fff", border: "none", borderRadius: 12,
-        padding: "14px 28px", fontSize: 15, fontWeight: 700,
-        fontFamily: "Montserrat, sans-serif", cursor: disabled ? "not-allowed" : "pointer",
-        boxShadow: disabled ? "none" : "0 6px 20px rgba(255,107,0,0.35)",
-        transition: "all .2s", letterSpacing: 0.3,
-      }}
-      onMouseEnter={e => { if (!disabled) { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 10px 28px rgba(255,107,0,0.45)"; } }}
-      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ""; (e.currentTarget as HTMLElement).style.boxShadow = disabled ? "none" : "0 6px 20px rgba(255,107,0,0.35)"; }}
+    <button onClick={onClick} disabled={disabled} style={{
+      width: full ? "100%" : undefined,
+      display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+      padding: sm ? "10px 20px" : "14px 28px",
+      borderRadius: 10, border: isOrange ? "none" : `1.5px solid ${C.border}`,
+      background: disabled ? "#D0CCC8" : isOrange ? `linear-gradient(135deg, ${C.accent}, ${C.accentL})` : C.white,
+      color: isOrange ? "#fff" : C.ink2,
+      fontSize: sm ? 13 : 15, fontWeight: 700, fontFamily: font,
+      cursor: disabled ? "not-allowed" : "pointer",
+      boxShadow: isOrange && !disabled ? `0 4px 18px ${C.accent}44` : "none",
+      transition: "all .18s", letterSpacing: 0.2,
+    }}
+      onMouseEnter={e => { if (!disabled) { const el = e.currentTarget as HTMLElement; el.style.transform = "translateY(-2px)"; el.style.boxShadow = isOrange ? `0 8px 28px ${C.accent}55` : "0 4px 16px #00000014"; } }}
+      onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = ""; el.style.boxShadow = isOrange && !disabled ? `0 4px 18px ${C.accent}44` : "none"; }}
     >
       {children}
     </button>
   );
 }
 
-/* ── QUIZ ──────────────────────────────────────────────── */
-const QUIZ_STEPS = [
-  {
-    q: "Какая у вас сфера бизнеса?",
-    opts: ["Оказание услуг", "Продажа товаров", "Оптовая торговля", "Продажа оборудования", "Другое"],
-  },
-  {
-    q: "Что вас не устраивает в рекламе?",
-    opts: ["Мало заявок", "Дорогие заявки", "Нецелевые клиенты", "Не понимаю бюджет", "Свой вариант"],
-  },
-  {
-    q: "Есть ли у вас отдел продаж?",
-    opts: ["Да", "Нет", "В процессе создания"],
-  },
-  {
-    q: "Какой рекламный бюджет в месяц?",
-    opts: ["До 30 000 ₽", "30 000 – 60 000 ₽", "60 000 – 120 000 ₽", "Свыше 120 000 ₽"],
-  },
+function PhoneInput({ value, onChange, error, placeholder = "+7 (___) ___-__-__" }: {
+  value: string; onChange: (v: string) => void; error?: string; placeholder?: string;
+}) {
+  return (
+    <div>
+      <div style={{ position: "relative" }}>
+        <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.muted, pointerEvents: "none" }}>
+          <Icon name="Phone" size={15} />
+        </span>
+        <input type="tel" value={value} placeholder={placeholder}
+          onChange={e => onChange(fmtPhone(e.target.value))}
+          style={{
+            width: "100%", paddingLeft: 42, paddingRight: 14, paddingTop: 13, paddingBottom: 13,
+            borderRadius: 10, border: `1.5px solid ${error ? "#ef4444" : C.border}`,
+            background: C.bg, fontSize: 14, fontFamily: font,
+            color: C.ink, outline: "none", boxSizing: "border-box", transition: "border-color .2s",
+          }}
+          onFocus={e => { e.target.style.borderColor = C.accent; e.target.style.background = C.white; }}
+          onBlur={e => { if (!error) e.target.style.borderColor = C.border; e.target.style.background = C.bg; }}
+        />
+      </div>
+      {error && <p style={{ color: "#ef4444", fontSize: 12, marginTop: 4, fontFamily: font }}>{error}</p>}
+    </div>
+  );
+}
+
+function Agree({ checked, onChange }: { checked: boolean; onChange: (b: boolean) => void }) {
+  return (
+    <label style={{ display: "flex", gap: 10, cursor: "pointer", marginTop: 12, alignItems: "flex-start" }}>
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
+        style={{ marginTop: 2, accentColor: C.accent, width: 15, height: 15, flexShrink: 0 }} />
+      <span style={{ fontSize: 12, color: C.muted, lineHeight: 1.5, fontFamily: font }}>
+        Я принимаю Положение и даю Согласие на&nbsp;
+        <a href="#" style={{ color: C.accent }}>обработку персональных данных</a>
+      </span>
+    </label>
+  );
+}
+
+function SuccessBox({ msg = "Перезвоним в течение 15 минут" }: { msg?: string }) {
+  return (
+    <div style={{ textAlign: "center", padding: "24px 0" }}>
+      <div style={{ width: 56, height: 56, borderRadius: "50%", background: `linear-gradient(135deg, ${C.accent}, ${C.accentL})`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+        <Icon name="Check" size={26} style={{ color: "#fff" }} />
+      </div>
+      <p style={{ fontWeight: 800, fontSize: 18, color: C.ink, marginBottom: 6, fontFamily: font }}>Принято!</p>
+      <p style={{ fontSize: 14, color: C.muted, fontFamily: font }}>{msg}</p>
+    </div>
+  );
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+      <span style={{ width: 24, height: 3, borderRadius: 99, background: C.accent, display: "inline-block" }} />
+      <span style={{ fontSize: 12, fontWeight: 700, color: C.accent, textTransform: "uppercase", letterSpacing: 1.2, fontFamily: font }}>{children}</span>
+    </div>
+  );
+}
+
+/* ─── QUIZ ───────────────────────────────────────────────────────── */
+const QUIZ = [
+  { q: "Какая у вас сфера бизнеса?", opts: ["Оказание услуг", "Продажа товаров", "Оптовая торговля", "Продажа оборудования", "Другое"] },
+  { q: "Что вас не устраивает в рекламе?", opts: ["Мало заявок", "Дорогие заявки", "Нецелевые клиенты", "Не понимаю бюджет"] },
+  { q: "У вас есть отдел продаж?", opts: ["Да", "Нет", "В процессе создания"] },
+  { q: "Какой рекламный бюджет в месяц?", opts: ["До 30 000 ₽", "30 000 – 60 000 ₽", "60 000 – 120 000 ₽", "Свыше 120 000 ₽"] },
 ];
 
 function Quiz() {
   const [step, setStep] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [sel, setSel] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [phoneErr, setPhoneErr] = useState("");
   const [agree, setAgree] = useState(false);
   const [done, setDone] = useState(false);
-  const [exiting, setExiting] = useState(false);
+  const [anim, setAnim] = useState(false);
 
-  const isPhoneStep = step === QUIZ_STEPS.length;
-  const pct = Math.round((step / (QUIZ_STEPS.length + 1)) * 100);
+  const total = QUIZ.length + 1;
+  const isLast = step === QUIZ.length;
+  const pct = Math.round((step / total) * 100) || 0;
 
-  function goNext() {
-    if (!isPhoneStep && !selected) return;
-    setExiting(true);
-    setTimeout(() => {
-      setStep(s => s + 1);
-      setSelected(null);
-      setExiting(false);
-    }, 220);
+  function go(dir: 1 | -1) {
+    if (dir === 1 && !isLast && !sel) return;
+    setAnim(true);
+    setTimeout(() => { setStep(s => s + dir); setSel(null); setAnim(false); }, 200);
   }
 
   function submit() {
     if (!validPhone(phone)) { setPhoneErr("Введите корректный номер"); return; }
-    if (!agree) { setPhoneErr("Необходимо согласие"); return; }
+    if (!agree) { setPhoneErr("Дайте согласие"); return; }
     setDone(true);
   }
 
-  if (done) return (
-    <div style={{ textAlign: "center", padding: "48px 0" }}>
-      <div style={{ width: 72, height: 72, borderRadius: "50%", background: "linear-gradient(135deg, #FF6B00, #e55a00)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-        <Icon name="Check" size={32} style={{ color: "#fff" }} />
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 32, alignItems: "start" }}>
+
+      {/* sticky expert block */}
+      <div style={{ position: "sticky", top: 88 }}>
+        <div style={{ borderRadius: 20, overflow: "hidden", marginBottom: 16, aspectRatio: "4/5" }}>
+          <img src={IMG.oleg} alt="Олег Кошкаров" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", display: "block" }} />
+        </div>
+        <div style={{ background: C.white, borderRadius: 16, padding: "16px 18px", border: `1px solid ${C.border}` }}>
+          <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
+            {[1,2,3,4,5].map(i => <span key={i} style={{ color: C.gold, fontSize: 13 }}>★</span>)}
+            <span style={{ fontSize: 12, color: C.muted, fontFamily: font, marginLeft: 4 }}>100+ клиентов</span>
+          </div>
+          <p style={{ fontSize: 13, fontStyle: "italic", color: C.ink2, lineHeight: 1.7, fontFamily: font }}>
+            «Моя главная цель — сделать так, чтобы мои клиенты зарабатывали больше денег»
+          </p>
+          <p style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: C.ink, fontFamily: font }}>— Олег Кошкаров</p>
+        </div>
       </div>
-      <h3 style={{ fontSize: 24, fontWeight: 800, color: "#1A1A1A", marginBottom: 8 }}>Спасибо!</h3>
-      <p style={{ color: "#666", fontSize: 16 }}>Расчёт и прайс-лист пришлём в течение <strong>15 минут</strong></p>
+
+      {/* quiz card */}
+      <div>
+        {/* progress */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.ink2, fontFamily: font }}>Шаг {step + 1} из {total}</span>
+            <span style={{ fontSize: 13, color: C.muted, fontFamily: font }}>Расчёт пройден на {pct}%</span>
+          </div>
+          <div style={{ height: 6, borderRadius: 99, background: C.border, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${Math.round(((step + (isLast && done ? 1 : 0)) / total) * 100)}%`, borderRadius: 99, background: `linear-gradient(90deg, ${C.accent}, ${C.accentL})`, transition: "width .5s ease" }} />
+          </div>
+        </div>
+
+        <div style={{
+          background: C.white, borderRadius: 20, padding: 32,
+          boxShadow: "0 4px 24px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04)",
+          opacity: anim ? 0 : 1, transform: anim ? "translateY(8px)" : "none", transition: "opacity .2s, transform .2s",
+        }}>
+          {done ? <SuccessBox msg="Расчёт и прайс-лист пришлём в течение 15 минут" /> : (
+            <>
+              {!isLast ? (
+                <>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: C.accent, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10, fontFamily: font }}>Вопрос {step + 1}</p>
+                  <h3 style={{ fontSize: 20, fontWeight: 800, color: C.ink, marginBottom: 20, lineHeight: 1.35, fontFamily: font }}>{QUIZ[step].q}</h3>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 28 }}>
+                    {QUIZ[step].opts.map(opt => (
+                      <button key={opt} onClick={() => setSel(opt)} style={{
+                        padding: "10px 18px", borderRadius: 99, fontSize: 14, fontFamily: font, fontWeight: 500,
+                        border: `1.5px solid ${sel === opt ? C.accent : C.border}`,
+                        background: sel === opt ? `${C.accent}12` : C.bg,
+                        color: sel === opt ? C.accent : C.ink2,
+                        cursor: "pointer", transition: "all .15s",
+                      }}>
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: C.accent, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10, fontFamily: font }}>Последний шаг</p>
+                  <h3 style={{ fontSize: 20, fontWeight: 800, color: C.ink, marginBottom: 6, lineHeight: 1.35, fontFamily: font }}>Куда отправить расчёт?</h3>
+                  <p style={{ fontSize: 14, color: C.muted, marginBottom: 20, fontFamily: font }}>Пришлём персональный расчёт в течение 15 минут</p>
+                  <div style={{ marginBottom: 4 }}>
+                    <PhoneInput value={phone} onChange={v => { setPhone(v); setPhoneErr(""); }} error={phoneErr} />
+                  </div>
+                  <Agree checked={agree} onChange={setAgree} />
+                </>
+              )}
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                {step > 0
+                  ? <Btn variant="ghost" sm onClick={() => go(-1)}>← Назад</Btn>
+                  : <span />
+                }
+                {!isLast
+                  ? <Btn sm disabled={!sel} onClick={() => go(1)}>Далее →</Btn>
+                  : <Btn sm onClick={submit}>Получить расчёт</Btn>
+                }
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
+}
+
+/* ─── CASES SLIDER ───────────────────────────────────────────────── */
+const CASES = [
+  { img: IMG.house,   title: "Строительство домов в Москве",        emoji: "🏗️",  stat: "1184 заявки на строительство каркасных домов в Москве и МО",  day: "1–4 заявки/день", price: "346 ₽/заявка", check: "70 тыс. мин. чек" },
+  { img: IMG.ceiling, title: "Натяжные потолки в Москве",           emoji: "✨",  stat: "240 лидов на установку натяжных потолков в Москве",             day: "2–5 заявок/день", price: "675 ₽/заявка", check: "20 тыс. мин. чек" },
+  { img: IMG.plaster, title: "Механизированная штукатурка в Москве", emoji: "🏛️", stat: "240 лидов на механизированную штукатурку в Москве",            day: "3–6 заявок/день", price: "855 ₽/заявка", check: "40 тыс. мин. чек" },
+  { img: IMG.repair,  title: "Ремонт квартир в Красногорске",        emoji: "🔨",  stat: "140 лидов на ремонт квартир в Красногорске",                   day: "1–2 заявки/день", price: "986 ₽/заявка", check: "87 тыс. мин. чек" },
+];
+const DONE_ITEMS = ["Разработали стратегию и создали продающее объявление", "Исследование целевой аудитории и конкурентов", "Подготовка УТП, продающих текстов и визуала", "A/B тестирование заголовков и фотографий"];
+
+function CaseSlide({ c }: { c: typeof CASES[0] }) {
+  const [phone, setPhone] = useState("");
+  const [phoneErr, setPhoneErr] = useState("");
+  const [agree, setAgree] = useState(false);
+  const [done, setDone] = useState(false);
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "40% 60%", gap: 0, height: 520 }}>
+      <div style={{ borderRadius: "20px 0 0 20px", overflow: "hidden" }}>
+        <img src={c.img} alt={c.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      </div>
+      <div style={{ background: C.white, borderRadius: "0 20px 20px 0", padding: "32px 36px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 0 }}>
+        <Label>Кейс</Label>
+        <h3 style={{ fontSize: 20, fontWeight: 800, color: C.ink, marginBottom: 14, lineHeight: 1.3, fontFamily: font }}>«{c.title}»</h3>
+        <div style={{ background: `${C.accent}0C`, borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: C.accent, fontFamily: font }}>{c.emoji} {c.stat}</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
+          {[c.day, c.price, c.check].map(s => (
+            <div key={s} style={{ background: C.bg, borderRadius: 10, padding: "10px 12px", textAlign: "center" }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: C.ink, fontFamily: font, lineHeight: 1.3 }}>{s}</p>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 10, fontFamily: font }}>Что было сделано?</p>
+        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 7, marginBottom: 20 }}>
+          {DONE_ITEMS.map(item => (
+            <li key={item} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <span style={{ color: C.accent, fontWeight: 800, fontSize: 13, flexShrink: 0, marginTop: 1 }}>✓</span>
+              <span style={{ fontSize: 13, color: C.ink2, lineHeight: 1.4, fontFamily: font }}>{item}</span>
+            </li>
+          ))}
+        </ul>
+        <div style={{ marginTop: "auto" }}>
+          {done ? <SuccessBox /> : (
+            <>
+              <PhoneInput value={phone} onChange={v => { setPhone(v); setPhoneErr(""); }} error={phoneErr} placeholder="Введите номер телефона" />
+              <Agree checked={agree} onChange={setAgree} />
+              <div style={{ marginTop: 12 }}>
+                <Btn full onClick={() => { if (!validPhone(phone)) { setPhoneErr("Введите корректный номер"); return; } if (!agree) { setPhoneErr("Дайте согласие"); return; } setDone(true); }}>
+                  Хочу также масштабироваться
+                </Btn>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CasesSlider() {
+  const [idx, setIdx] = useState(0);
+  const [dir, setDir] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  function go(next: number) {
+    if (next === idx) return;
+    setDir(next > idx ? 1 : -1);
+    setVisible(false);
+    setTimeout(() => { setIdx(next); setVisible(true); }, 220);
+  }
 
   return (
     <div>
-      {/* progress */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-          <span style={{ fontSize: 13, color: "#666" }}>Шаг {step + 1} из {QUIZ_STEPS.length + 1}</span>
-          <span style={{ fontSize: 13, color: "#666" }}>Расчёт пройден на {pct}%</span>
+      <div style={{ position: "relative", overflow: "hidden", borderRadius: 20, boxShadow: "0 8px 40px rgba(0,0,0,0.1)" }}>
+        <div style={{ opacity: visible ? 1 : 0, transform: visible ? "none" : `translateX(${dir * 30}px)`, transition: "opacity .22s, transform .22s" }}>
+          <CaseSlide c={CASES[idx]} />
         </div>
-        <div style={{ height: 6, borderRadius: 99, background: "#F0F0F0", overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${pct}%`, borderRadius: 99, background: "linear-gradient(90deg, #FF6B00, #ffaa00)", transition: "width .6s ease" }} />
-        </div>
-      </div>
 
-      {/* card */}
-      <div
-        style={{
-          background: "#fff", borderRadius: 24, padding: "32px",
-          boxShadow: "0 4px 32px rgba(0,0,0,0.08)",
-          opacity: exiting ? 0 : 1,
-          transform: exiting ? "translateY(8px)" : "translateY(0)",
-          transition: "opacity .22s, transform .22s",
-        }}
-      >
-        {!isPhoneStep ? (
-          <>
-            <p style={{ fontSize: 13, color: "#FF6B00", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
-              Вопрос {step + 1}
-            </p>
-            <h3 style={{ fontSize: 22, fontWeight: 800, color: "#1A1A1A", marginBottom: 24, lineHeight: 1.3 }}>
-              {QUIZ_STEPS[step].q}
-            </h3>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 28 }}>
-              {QUIZ_STEPS[step].opts.map(opt => (
-                <button
-                  key={opt}
-                  onClick={() => setSelected(opt)}
-                  style={{
-                    padding: "10px 20px", borderRadius: 60, fontSize: 14, fontWeight: 500,
-                    fontFamily: "Montserrat, sans-serif", cursor: "pointer", transition: "all .18s",
-                    background: selected === opt ? "rgba(255,107,0,0.08)" : "#fff",
-                    border: `1.5px solid ${selected === opt ? "#FF6B00" : "#E5E5E5"}`,
-                    color: selected === opt ? "#FF6B00" : "#1A1A1A",
-                  }}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <OrangeBtn onClick={goNext} disabled={!selected}>
-                Далее →
-              </OrangeBtn>
-            </div>
-          </>
-        ) : (
-          <>
-            <p style={{ fontSize: 13, color: "#FF6B00", fontWeight: 600, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
-              Последний шаг
-            </p>
-            <h3 style={{ fontSize: 22, fontWeight: 800, color: "#1A1A1A", marginBottom: 8, lineHeight: 1.3 }}>
-              Куда отправить расчёт и прайс-лист?
-            </h3>
-            <p style={{ fontSize: 14, color: "#666", marginBottom: 20 }}>Пришлём персональный расчёт в течение 15 минут</p>
-            <div style={{ marginBottom: 4 }}>
-              <PhoneField value={phone} onChange={v => { setPhone(v); setPhoneErr(""); }} error={phoneErr} />
-            </div>
-            <Agree checked={agree} onChange={setAgree} />
-            <div style={{ marginTop: 20 }}>
-              <OrangeBtn onClick={submit} full>Получить расчёт бесплатно</OrangeBtn>
-            </div>
-          </>
+        {/* arrows */}
+        {idx > 0 && (
+          <button onClick={() => go(idx - 1)} style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", width: 40, height: 40, borderRadius: "50%", background: C.white, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 12px rgba(0,0,0,0.12)", zIndex: 10 }}>
+            <Icon name="ChevronLeft" size={20} style={{ color: C.ink }} />
+          </button>
+        )}
+        {idx < CASES.length - 1 && (
+          <button onClick={() => go(idx + 1)} style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", width: 40, height: 40, borderRadius: "50%", background: C.white, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 12px rgba(0,0,0,0.12)", zIndex: 10 }}>
+            <Icon name="ChevronRight" size={20} style={{ color: C.ink }} />
+          </button>
         )}
       </div>
-    </div>
-  );
-}
 
-/* ── CASES data ────────────────────────────────────────── */
-const CASES = [
-  {
-    title: "Строительство домов в Москве",
-    leads: "1184 заявки",
-    stats: "1–4 заявки/день · 346 ₽ за заявку · 70 тыс. мин. чек",
-    items: ["Анализ целевой аудитории и конкурентов", "Создание продающего объявления с УТП", "Настройка таргетинга по ключевым словам", "A/B тестирование заголовков и фото"],
-  },
-  {
-    title: "Натяжные потолки в Краснодаре",
-    leads: "876 заявок",
-    stats: "2–5 заявок/день · 290 ₽ за заявку · 35 тыс. мин. чек",
-    items: ["Сегментация рекламы по районам города", "Разработка уникального оффера", "Профессиональные фото работ", "Оптимизация бюджета по ROI"],
-  },
-  {
-    title: "Кровельные работы в СПб",
-    leads: "643 заявки",
-    stats: "1–3 заявки/день · 410 ₽ за заявку · 90 тыс. мин. чек",
-    items: ["Проработка болей целевой аудитории", "Создание портфолио завершённых объектов", "Настройка связки Авито + CRM", "Ежемесячная аналитика и корректировка"],
-  },
-  {
-    title: "Штукатурка и отделка в Ростове",
-    leads: "521 заявка",
-    stats: "1–2 заявки/день · 380 ₽ за заявку · 25 тыс. мин. чек",
-    items: ["Выявление ключевых запросов клиентов", "Написание продающих текстов", "Составление медиаплана", "Управление репутацией и отзывами"],
-  },
-];
-
-function CaseCard({ c }: { c: typeof CASES[0] }) {
-  const [phone, setPhone] = useState("");
-  const [phoneErr, setPhoneErr] = useState("");
-  const [agree, setAgree] = useState(false);
-  const [done, setDone] = useState(false);
-
-  function submit() {
-    if (!validPhone(phone)) { setPhoneErr("Введите корректный номер"); return; }
-    if (!agree) { setPhoneErr("Необходимо согласие"); return; }
-    setDone(true);
-  }
-
-  return (
-    <div style={{ background: "#fff", borderRadius: 20, padding: 24, boxShadow: "0 4px 24px rgba(0,0,0,0.07)", display: "flex", flexDirection: "column", gap: 0 }}>
-      <p style={{ fontSize: 11, color: "#FF6B00", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Кейс</p>
-      <h3 style={{ fontSize: 18, fontWeight: 800, color: "#1A1A1A", marginBottom: 16, lineHeight: 1.3 }}>«{c.title}»</h3>
-
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
-        <span style={{ fontSize: 32, fontWeight: 900, color: "#FF6B00" }}>🔥 {c.leads}</span>
-      </div>
-      <p style={{ fontSize: 13, color: "#666", marginBottom: 18 }}>{c.stats}</p>
-
-      <div style={{ height: 1, background: "#F0F0F0", marginBottom: 18 }} />
-
-      <p style={{ fontSize: 14, fontWeight: 700, color: "#1A1A1A", marginBottom: 12 }}>Что было сделано?</p>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-        {c.items.map(item => (
-          <li key={item} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-            <span style={{ color: "#FF6B00", fontWeight: 800, fontSize: 14, flexShrink: 0, marginTop: 1 }}>✓</span>
-            <span style={{ fontSize: 14, color: "#444", lineHeight: 1.4 }}>{item}</span>
-          </li>
+      {/* dots */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 20 }}>
+        {CASES.map((_, i) => (
+          <button key={i} onClick={() => go(i)} style={{ width: i === idx ? 24 : 8, height: 8, borderRadius: 99, border: "none", cursor: "pointer", background: i === idx ? C.accent : C.border, transition: "all .25s", padding: 0 }} />
         ))}
-      </ul>
-
-      <div style={{ height: 1, background: "#F0F0F0", marginBottom: 18 }} />
-
-      {done ? (
-        <div style={{ textAlign: "center", padding: "12px 0", color: "#FF6B00", fontWeight: 700 }}>
-          ✓ Перезвоним в течение 15 минут!
-        </div>
-      ) : (
-        <>
-          <PhoneField value={phone} onChange={v => { setPhone(v); setPhoneErr(""); }} error={phoneErr} placeholder="Введите номер телефона" />
-          <Agree checked={agree} onChange={setAgree} />
-          <div style={{ marginTop: 14 }}>
-            <OrangeBtn onClick={submit} full>Хочу также масштабироваться</OrangeBtn>
-          </div>
-        </>
-      )}
+      </div>
     </div>
   );
 }
 
-/* ── ADVANTAGES data ───────────────────────────────────── */
-const ADVANTAGES = [
-  { icon: "Target", title: "Комплексный анализ ЦА", desc: "Изучаем вашу аудиторию, конкурентов и нишу перед запуском рекламы" },
-  { icon: "Lightbulb", title: "Сильное уникальное УТП", desc: "Разрабатываем предложение, от которого невозможно отказаться" },
-  { icon: "FileText", title: "Продающее описание", desc: "Тексты, которые закрывают возражения и ведут к звонку" },
-  { icon: "Layers", title: "Сегментация рекламы", desc: "Раздельные объявления под каждый сегмент вашей аудитории" },
-  { icon: "BarChart2", title: "A/B тестирование", desc: "Тестируем заголовки, фото и офферы для роста конверсии" },
-  { icon: "BadgeCheck", title: "Понятные цены", desc: "Прозрачный прайс без скрытых платежей и сюрпризов" },
+/* ─── ADVANTAGES ─────────────────────────────────────────────────── */
+const ADV = [
+  { icon: "Users",       title: "Комплексный анализ ЦА",       desc: "Разрабатываем уникальное торговое предложение, которое выделяет вас среди конкурентов" },
+  { icon: "FileText",    title: "Эффективное описание",         desc: "Яркие тизеры, грамотная сегментация аудитории для максимального охвата" },
+  { icon: "SlidersHorizontal", title: "Точная сегментация",    desc: "Широкое размещение с управлением ставками и оптимизацией по позиции" },
+  { icon: "BarChart2",   title: "A/B тестирование",             desc: "Поиск наиболее эффективных комбинаций заголовков, фото и офферов" },
+  { icon: "Zap",         title: "Скорость и качество",          desc: "Достигаем поставленных целей в установленные сроки с измеримым результатом" },
+  { icon: "BadgeCheck",  title: "Понятные цены",                desc: "Гибкие пакеты услуг без скрытых платежей и неприятных сюрпризов" },
 ];
 
-/* ── MAIN ──────────────────────────────────────────────── */
+/* ─── MAIN ───────────────────────────────────────────────────────── */
 export default function Index() {
   const [heroPhone, setHeroPhone] = useState("");
   const [heroErr, setHeroErr] = useState("");
@@ -322,153 +386,101 @@ export default function Index() {
   const [priceAgree, setPriceAgree] = useState(false);
   const [priceDone, setPriceDone] = useState(false);
 
-  const [consultName, setConsultName] = useState("");
-  const [consultPhone, setConsultPhone] = useState("");
-  const [consultPhoneErr, setConsultPhoneErr] = useState("");
-  const [consultAgree, setConsultAgree] = useState(false);
-  const [consultDone, setConsultDone] = useState(false);
+  const [cName, setCName] = useState("");
+  const [cPhone, setCPhone] = useState("");
+  const [cPhoneErr, setCPhoneErr] = useState("");
+  const [cAgree, setCAgree] = useState(false);
+  const [cDone, setCDone] = useState(false);
 
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
-  const S = {
-    page: { fontFamily: "Montserrat, sans-serif", background: "#fff", color: "#1A1A1A", minHeight: "100vh" },
-    container: { maxWidth: 1200, margin: "0 auto", padding: "0 20px" } as React.CSSProperties,
-    section: (bg = "#fff") => ({ background: bg, padding: "80px 0" }),
-    sectionTitle: { fontSize: "clamp(24px, 3.5vw, 32px)", fontWeight: 800, color: "#1A1A1A", lineHeight: 1.2 },
-    sectionSub: { fontSize: 17, color: "#666", marginTop: 12, lineHeight: 1.6 },
-    orange: { color: "#FF6B00" },
-  };
+  const wrap: React.CSSProperties = { maxWidth: 1200, margin: "0 auto", padding: "0 24px" };
+  const sec = (bg = C.bg): React.CSSProperties => ({ background: bg, padding: "88px 0" });
 
   return (
-    <div style={S.page}>
+    <div style={{ fontFamily: font, background: C.bg, color: C.ink, minHeight: "100vh" }}>
 
-      {/* ═══ HEADER ═══════════════════════════════════════════════ */}
-      <header style={{ background: "#fff", boxShadow: "0 2px 16px rgba(0,0,0,0.07)", position: "sticky", top: 0, zIndex: 100 }}>
-        <div style={{ ...S.container, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", height: 68 }}>
-          {/* logo */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, #FF6B00, #e55a00)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 13, color: "#fff", flexShrink: 0 }}>ОК</div>
-            <span style={{ fontWeight: 800, fontSize: 18, color: "#1A1A1A", letterSpacing: -0.3 }}>Олег Кошкаров</span>
+      {/* ══ HEADER ════════════════════════════════════════════════ */}
+      <header style={{ background: C.white, borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 12px rgba(0,0,0,0.05)" }}>
+        <div style={{ ...wrap, display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${C.accent}, ${C.accentL})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 12, color: "#fff" }}>ОК</div>
+            <span style={{ fontWeight: 800, fontSize: 17, letterSpacing: -0.3 }}>Олег Кошкаров</span>
           </div>
-
-          {/* nav */}
-          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            {/* Telegram */}
-            <a href="https://t.me/olegkoshkarov" target="_blank" rel="noopener noreferrer"
-              style={{ width: 40, height: 40, borderRadius: 10, border: "1.5px solid #E5E5E5", display: "flex", alignItems: "center", justifyContent: "center", color: "#555", textDecoration: "none", transition: "all .2s" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "#0088cc"; (e.currentTarget as HTMLElement).style.color = "#0088cc"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "#E5E5E5"; (e.currentTarget as HTMLElement).style.color = "#555"; }}
-              title="Telegram"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.41 13.993l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.738.566z"/>
-              </svg>
-            </a>
-
-            {/* WhatsApp */}
-            <a href="https://wa.me/79001234567" target="_blank" rel="noopener noreferrer"
-              style={{ width: 40, height: 40, borderRadius: 10, border: "1.5px solid #E5E5E5", display: "flex", alignItems: "center", justifyContent: "center", color: "#555", textDecoration: "none", transition: "all .2s" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "#25D366"; (e.currentTarget as HTMLElement).style.color = "#25D366"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "#E5E5E5"; (e.currentTarget as HTMLElement).style.color = "#555"; }}
-              title="WhatsApp"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-              </svg>
-            </a>
-
-            <div style={{ width: 1, height: 24, background: "#E5E5E5" }} />
-
-            {/* Price */}
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            {[
+              { href: "https://t.me/olegkoshkarov", hover: "#0088cc", svg: <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.41 13.993l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.738.566z"/></svg> },
+              { href: "https://wa.me/79001234567", hover: "#25D366", svg: <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> },
+            ].map(({ href, hover, svg }) => (
+              <a key={href} href={href} target="_blank" rel="noopener noreferrer"
+                style={{ width: 38, height: 38, borderRadius: 9, border: `1.5px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, textDecoration: "none", transition: "all .2s" }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.color = hover; el.style.borderColor = hover; el.style.background = `${hover}14`; }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.color = C.muted; el.style.borderColor = C.border; el.style.background = "transparent"; }}
+              >{svg}</a>
+            ))}
+            <div style={{ width: 1, height: 22, background: C.border }} />
             <button onClick={() => scrollTo("price")}
-              style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "Montserrat, sans-serif", fontWeight: 600, fontSize: 14, color: "#FF6B00", textDecoration: "underline", textDecorationColor: "rgba(255,107,0,0.4)", padding: 0 }}
-            >
+              style={{ background: "none", border: "none", cursor: "pointer", fontFamily: font, fontWeight: 600, fontSize: 14, color: C.accent, padding: 0, borderBottom: `1.5px solid ${C.accent}44`, paddingBottom: 1 }}>
               Прайс
             </button>
-
-            {/* CTA */}
-            <button onClick={() => scrollTo("consult")}
-              style={{ background: "linear-gradient(135deg, #FF6B00, #e55a00)", color: "#fff", border: "none", borderRadius: 12, padding: "10px 22px", fontFamily: "Montserrat, sans-serif", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 4px 14px rgba(255,107,0,0.3)", transition: "all .2s" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ""; }}
-            >
-              Бесплатный разбор
-            </button>
+            <Btn sm onClick={() => scrollTo("consult")}>Бесплатный разбор</Btn>
           </div>
         </div>
       </header>
 
-      {/* ═══ HERO ══════════════════════════════════════════════════ */}
-      <section style={{ background: "linear-gradient(160deg, #fff 55%, #FFF8F3 100%)", padding: "64px 0 0" }}>
-        <div style={{ ...S.container }}>
-          <div style={{ display: "grid", gridTemplateColumns: "52% 48%", gap: 0, alignItems: "stretch", minHeight: 560 }}>
+      {/* ══ HERO ══════════════════════════════════════════════════ */}
+      <section style={{ background: C.white, padding: "72px 0 0", borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ ...wrap }}>
+          <div style={{ display: "grid", gridTemplateColumns: "50% 50%", gap: 0, minHeight: 620, alignItems: "stretch" }}>
 
             {/* LEFT */}
-            <div style={{ paddingRight: 48, paddingBottom: 64, display: "flex", flexDirection: "column", gap: 0 }}>
-              {/* label */}
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-                <div style={{ width: 32, height: 3, borderRadius: 99, background: "#FF6B00" }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#FF6B00", textTransform: "uppercase", letterSpacing: 1 }}>Авито-маркетинг · Строительный бизнес</span>
-              </div>
+            <div style={{ paddingRight: 56, paddingBottom: 72, display: "flex", flexDirection: "column" }}>
+              <Label>Авито-маркетинг · Строительный бизнес</Label>
 
-              <h1 style={{ fontSize: "clamp(26px, 3.8vw, 42px)", fontWeight: 900, color: "#1A1A1A", lineHeight: 1.1, marginBottom: 18, letterSpacing: -0.5 }}>
+              <h1 style={{ fontSize: "clamp(26px, 3.5vw, 42px)", fontWeight: 900, color: C.ink, lineHeight: 1.08, marginBottom: 18, letterSpacing: -0.8 }}>
                 ЗАПУСКАЕМ АВИТО<br />
-                <span style={{ color: "#FF6B00" }}>«ПОД КЛЮЧ»</span><br />
+                <span style={{ color: C.accent }}>«ПОД КЛЮЧ»</span><br />
                 НА СТРОИТЕЛЬНЫЕ УСЛУГИ
               </h1>
 
-              <p style={{ fontSize: "clamp(16px, 2vw, 20px)", fontWeight: 700, color: "#FF6B00", marginBottom: 20 }}>
+              <p style={{ fontSize: 18, fontWeight: 700, color: C.accent, marginBottom: 20 }}>
                 Первые целевые заявки уже через 3 дня от 150 ₽
               </p>
 
-              {/* services */}
-              <div style={{ marginBottom: 22 }}>
-                <p style={{ fontSize: 13, color: "#888", marginBottom: 10, fontWeight: 500 }}>Клиенты на:</p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {["Натяжные потолки", "Каркасные дома", "Штукатурку", "Кровлю", "Фасады", "Ремонт под ключ"].map(s => (
-                    <span key={s} style={{ fontSize: 13, padding: "6px 14px", borderRadius: 99, border: "1px solid #E5E5E5", color: "#444", background: "#fff" }}>{s}</span>
-                  ))}
-                </div>
+              <p style={{ fontSize: 14, color: C.ink2, marginBottom: 14, fontWeight: 500 }}>
+                <span style={{ color: C.muted }}>Клиенты на: </span>
+                натяжные потолки, каркасные дома, штукатурку и др.
+              </p>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
+                <Pill>🛡️ Гарантия получения качественных заявок</Pill>
+                <Pill>🎯 Индивидуальный подход под ваш бизнес</Pill>
               </div>
 
-              {/* badges */}
-              <div style={{ display: "flex", gap: 10, marginBottom: 22, flexWrap: "wrap" }}>
-                {[
-                  { em: "🛡️", text: "Гарантия получения качественных заявок" },
-                  { em: "🎯", text: "Индивидуальный подход под ваш бизнес" },
-                ].map(({ em, text }) => (
-                  <div key={text} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 40, border: "1.5px solid #E5E5E5", background: "#fff", fontSize: 13, color: "#333", fontWeight: 500, flexShrink: 0 }}>
-                    <span>{em}</span> {text}
-                  </div>
-                ))}
-              </div>
-
-              <p style={{ fontSize: 13, color: "#999", marginBottom: 28 }}>Ваш надёжный партнёр для бизнеса на Авито</p>
+              <p style={{ fontSize: 13, color: C.muted, marginBottom: 28 }}>Ваш надёжный партнёр для бизнеса на Авито</p>
 
               {/* FORM */}
-              <div style={{ background: "#fff", borderRadius: 20, padding: 24, boxShadow: "0 8px 32px rgba(0,0,0,0.09)", border: "1px solid #F0F0F0" }}>
-                {heroDone ? (
-                  <div style={{ textAlign: "center", padding: "16px 0" }}>
-                    <span style={{ fontSize: 40 }}>✅</span>
-                    <p style={{ fontWeight: 700, color: "#1A1A1A", marginTop: 10, marginBottom: 4 }}>Принято!</p>
-                    <p style={{ color: "#666", fontSize: 14 }}>Перезвоним в течение <strong>15 минут</strong></p>
-                  </div>
-                ) : (
+              <div style={{ background: C.bg, borderRadius: 20, padding: 24, border: `1px solid ${C.border}`, marginTop: "auto" }}>
+                {heroDone ? <SuccessBox /> : (
                   <>
-                    <p style={{ fontWeight: 800, fontSize: 16, color: "#1A1A1A", marginBottom: 14, lineHeight: 1.4 }}>
-                      Платите за рекламу — <span style={{ color: "#FF6B00" }}>а заявок нет?</span>
+                    <p style={{ fontWeight: 800, fontSize: 15, color: C.ink, marginBottom: 12 }}>
+                      Платите за рекламу — <span style={{ color: C.accent }}>а заявок нет?</span>
                     </p>
-                    <h3 style={{ fontSize: 20, fontWeight: 800, color: "#1A1A1A", marginBottom: 6, lineHeight: 1.3 }}>Запишитесь на бесплатный разбор</h3>
-                    <p style={{ fontSize: 14, color: "#888", marginBottom: 16, lineHeight: 1.5 }}>Покажу, где деньги сливаются и как окупить вложения минимум ×3</p>
+                    <h3 style={{ fontSize: 18, fontWeight: 800, color: C.ink, marginBottom: 6 }}>
+                      Запишитесь на бесплатный разбор
+                    </h3>
+                    <p style={{ fontSize: 13, color: C.muted, marginBottom: 16, lineHeight: 1.5 }}>
+                      Покажу, где деньги сливаются и как окупить вложения минимум ×3
+                    </p>
                     <div style={{ marginBottom: 12 }}>
-                      <PhoneField value={heroPhone} onChange={v => { setHeroPhone(v); setHeroErr(""); }} error={heroErr} />
+                      <PhoneInput value={heroPhone} onChange={v => { setHeroPhone(v); setHeroErr(""); }} error={heroErr} />
                     </div>
-                    <OrangeBtn onClick={() => { if (!validPhone(heroPhone)) { setHeroErr("Введите корректный номер"); return; } setHeroDone(true); }} full>
+                    <Btn full onClick={() => { if (!validPhone(heroPhone)) { setHeroErr("Введите корректный номер"); return; } setHeroDone(true); }}>
                       Получить разбор
-                    </OrangeBtn>
+                    </Btn>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
-                      <Icon name="Clock" size={14} style={{ color: "#aaa" }} />
-                      <span style={{ fontSize: 12, color: "#aaa" }}>Отвечаю в течение 15 минут</span>
+                      <Icon name="Clock" size={13} style={{ color: C.muted }} />
+                      <span style={{ fontSize: 12, color: C.muted }}>Отвечаю в течение 15 минут</span>
                     </div>
                   </>
                 )}
@@ -476,20 +488,13 @@ export default function Index() {
             </div>
 
             {/* RIGHT — photo */}
-            <div style={{ position: "relative", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-              <div style={{ position: "relative", width: "100%", maxWidth: 480 }}>
-                {/* decorative blob */}
-                <div style={{ position: "absolute", bottom: 0, left: "10%", right: "10%", height: "80%", borderRadius: "50% 50% 0 0", background: "linear-gradient(180deg, rgba(255,107,0,0.08) 0%, rgba(255,107,0,0.15) 100%)", zIndex: 0 }} />
-                <img
-                  src={PHOTO}
-                  alt="Олег Кошкаров"
-                  style={{ position: "relative", zIndex: 1, width: "100%", borderRadius: "20px 20px 0 0", objectFit: "cover", objectPosition: "top", aspectRatio: "3/4", display: "block" }}
-                />
-                {/* name badge */}
-                <div style={{ position: "absolute", bottom: 16, left: 16, right: 16, zIndex: 2, background: "rgba(255,255,255,0.92)", backdropFilter: "blur(12px)", borderRadius: 16, padding: "12px 16px", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }}>
-                  <p style={{ fontWeight: 800, fontSize: 15, color: "#1A1A1A", marginBottom: 2 }}>Олег Кошкаров</p>
-                  <p style={{ fontSize: 13, color: "#FF6B00", fontWeight: 600 }}>7 лет опыта в Авито-маркетинге</p>
-                </div>
+            <div style={{ position: "relative", display: "flex", alignItems: "flex-end" }}>
+              <div style={{ position: "absolute", bottom: 0, left: "5%", right: "5%", top: "15%", borderRadius: "50% 50% 0 0", background: `linear-gradient(180deg, ${C.accent}0A 0%, ${C.accent}1A 100%)`, zIndex: 0 }} />
+              <img src={IMG.oleg} alt="Олег Кошкаров"
+                style={{ position: "relative", zIndex: 1, width: "100%", borderRadius: "20px 20px 0 0", objectFit: "cover", objectPosition: "top center", aspectRatio: "3/4", display: "block" }} />
+              <div style={{ position: "absolute", bottom: 20, left: 20, right: 20, zIndex: 2, background: "rgba(255,255,255,0.94)", backdropFilter: "blur(10px)", borderRadius: 14, padding: "12px 16px", boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
+                <p style={{ fontWeight: 800, fontSize: 15, color: C.ink, marginBottom: 3 }}>Олег Кошкаров</p>
+                <p style={{ fontSize: 12, color: C.accent, fontWeight: 600 }}>Основатель · 7 лет опыта в Авито-маркетинге</p>
               </div>
             </div>
 
@@ -497,99 +502,87 @@ export default function Index() {
         </div>
       </section>
 
-      {/* ═══ QUIZ ══════════════════════════════════════════════════ */}
-      <section id="quiz" style={S.section("#F8F9FA")}>
-        <div style={S.container}>
-          <div style={{ textAlign: "center", maxWidth: 720, margin: "0 auto 48px" }}>
-            <h2 style={{ ...S.sectionTitle, marginBottom: 12 }}>
+      {/* ══ QUIZ ══════════════════════════════════════════════════ */}
+      <section id="quiz" style={sec(C.bg)}>
+        <div style={wrap}>
+          <div style={{ textAlign: "center", maxWidth: 680, margin: "0 auto 52px" }}>
+            <Label>Калькулятор заявок</Label>
+            <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", fontWeight: 800, color: C.ink, lineHeight: 1.2, marginBottom: 14 }}>
               Давайте рассчитаем, сколько заявок можно получить для вашего бизнеса
             </h2>
-            <p style={S.sectionSub}>
+            <p style={{ fontSize: 16, color: C.muted, lineHeight: 1.7 }}>
               Ответьте на несколько простых вопросов — мы проведём анализ вашей ниши и рассчитаем количество заявок в вашем городе
             </p>
           </div>
-
-          {/* quote */}
-          <div style={{ display: "flex", gap: 16, alignItems: "flex-start", background: "#fff", borderRadius: 16, padding: "20px 24px", maxWidth: 760, margin: "0 auto 40px", boxShadow: "0 2px 16px rgba(0,0,0,0.06)" }}>
-            <div style={{ width: 4, borderRadius: 99, background: "#FF6B00", alignSelf: "stretch", flexShrink: 0 }} />
-            <p style={{ fontSize: 15, fontStyle: "italic", color: "#444", lineHeight: 1.7 }}>
-              «Моя главная цель — сделать так, чтобы мои клиенты зарабатывали больше денег»
-              <br /><strong style={{ fontStyle: "normal", color: "#1A1A1A" }}>— Олег Кошкаров</strong>
-            </p>
-          </div>
-
-          <div style={{ maxWidth: 680, margin: "0 auto" }}>
-            <Quiz />
-          </div>
+          <Quiz />
         </div>
       </section>
 
-      {/* ═══ CASES ═════════════════════════════════════════════════ */}
-      <section id="cases" style={S.section("#fff")}>
-        <div style={S.container}>
-          <div style={{ textAlign: "center", maxWidth: 700, margin: "0 auto 48px" }}>
-            <h2 style={{ ...S.sectionTitle, marginBottom: 12 }}>
-              С 2022 года запустили более <span style={S.orange}>100 успешных продвижений</span> на Авито
+      {/* ══ CASES ═════════════════════════════════════════════════ */}
+      <section id="cases" style={sec(C.white)}>
+        <div style={wrap}>
+          <div style={{ textAlign: "center", maxWidth: 680, margin: "0 auto 48px" }}>
+            <Label>Кейсы</Label>
+            <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", fontWeight: 800, color: C.ink, lineHeight: 1.2, marginBottom: 14 }}>
+              С 2022 года запустили более <span style={{ color: C.accent }}>100 успешных продвижений</span> на Авито
             </h2>
-            <p style={S.sectionSub}>Посмотрите на результаты некоторых наших клиентов</p>
+            <p style={{ fontSize: 16, color: C.muted }}>Посмотрите на результаты некоторых наших клиентов</p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24 }}>
-            {CASES.map(c => <CaseCard key={c.title} c={c} />)}
-          </div>
+          <CasesSlider />
         </div>
       </section>
 
-      {/* ═══ ADVANTAGES ════════════════════════════════════════════ */}
-      <section style={S.section("#F8F9FA")}>
-        <div style={S.container}>
-          <div style={{ textAlign: "center", maxWidth: 700, margin: "0 auto 48px" }}>
-            <h2 style={{ ...S.sectionTitle, marginBottom: 12 }}>
-              Партнёрство с нами обеспечивает вашему бизнесу <span style={S.orange}>гарантированный трафик</span>
+      {/* ══ ADVANTAGES ════════════════════════════════════════════ */}
+      <section style={sec(C.bg)}>
+        <div style={wrap}>
+          <div style={{ textAlign: "center", maxWidth: 680, margin: "0 auto 48px" }}>
+            <Label>Преимущества</Label>
+            <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", fontWeight: 800, color: C.ink, lineHeight: 1.2, marginBottom: 14 }}>
+              Партнёрство с нами обеспечивает вашему бизнесу <span style={{ color: C.accent }}>гарантированный трафик</span>
             </h2>
-            <p style={S.sectionSub}>Работая с нами, вы будете наслаждаться рядом преимуществ, которые дают реальный результат</p>
+            <p style={{ fontSize: 16, color: C.muted }}>Работая с нами, вы будете наслаждаться рядом преимуществ, которые дают реальный результат</p>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
-            {ADVANTAGES.map(({ icon, title, desc }) => (
-              <div
-                key={title}
-                style={{ background: "#fff", borderRadius: 20, padding: "24px", boxShadow: "0 2px 16px rgba(0,0,0,0.05)", transition: "all .2s", cursor: "default" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 32px rgba(255,107,0,0.12)"; (e.currentTarget as HTMLElement).style.transform = "translateY(-3px)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 16px rgba(0,0,0,0.05)"; (e.currentTarget as HTMLElement).style.transform = ""; }}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+            {ADV.map(({ icon, title, desc }) => (
+              <div key={title}
+                style={{ background: C.white, borderRadius: 18, padding: 24, border: `1px solid ${C.border}`, transition: "all .2s", cursor: "default" }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = `0 8px 32px ${C.accent}1A`; el.style.borderColor = `${C.accent}44`; el.style.transform = "translateY(-3px)"; }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = "none"; el.style.borderColor = C.border; el.style.transform = ""; }}
               >
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(255,107,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                  <Icon name={icon} size={22} style={{ color: "#FF6B00" }} />
+                <div style={{ width: 46, height: 46, borderRadius: 12, background: `${C.accent}14`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <Icon name={icon} size={21} style={{ color: C.accent }} />
                 </div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1A1A1A", marginBottom: 8 }}>{title}</h3>
-                <p style={{ fontSize: 14, color: "#666", lineHeight: 1.6 }}>{desc}</p>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: C.ink, marginBottom: 8 }}>{title}</h3>
+                <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>{desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ═══ PRICE ═════════════════════════════════════════════════ */}
-      <section id="price" style={S.section("#fff")}>
-        <div style={S.container}>
-          <div style={{ textAlign: "center", maxWidth: 600, margin: "0 auto" }}>
-            <div style={{ width: 60, height: 60, borderRadius: "50%", background: "rgba(255,107,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-              <Icon name="Download" size={26} style={{ color: "#FF6B00" }} />
+      {/* ══ PRICE ═════════════════════════════════════════════════ */}
+      <section id="price" style={sec(C.white)}>
+        <div style={wrap}>
+          <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center" }}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: `${C.accent}14`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+              <Icon name="Download" size={24} style={{ color: C.accent }} />
             </div>
-            <h2 style={{ ...S.sectionTitle, marginBottom: 10 }}>Скачайте прайс и узнайте полную стоимость на все услуги</h2>
-            <p style={{ ...S.sectionSub, marginBottom: 28 }}>Чтобы получить прайс, введите ваш телефон — отправлю в течение 15 минут</p>
-
-            {priceDone ? (
-              <div style={{ padding: "20px", background: "rgba(255,107,0,0.06)", borderRadius: 16, color: "#FF6B00", fontWeight: 700, fontSize: 16 }}>
-                ✓ Прайс-лист отправлен! Проверьте телефон через 15 минут.
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 500, margin: "0 auto" }}>
-                <div style={{ display: "flex", gap: 12 }}>
+            <Label>Прайс-лист</Label>
+            <h2 style={{ fontSize: "clamp(20px, 2.5vw, 28px)", fontWeight: 800, color: C.ink, marginBottom: 10, lineHeight: 1.3 }}>
+              Скачайте прайс и узнайте полную стоимость на все услуги
+            </h2>
+            <p style={{ fontSize: 15, color: C.muted, marginBottom: 28, lineHeight: 1.6 }}>
+              Чтобы получить прайс, введите ваш телефон — отправлю в течение 15 минут
+            </p>
+            {priceDone ? <SuccessBox msg="Прайс-лист отправлен! Проверьте телефон через 15 минут." /> : (
+              <div style={{ textAlign: "left" }}>
+                <div style={{ display: "flex", gap: 10, marginBottom: 4 }}>
                   <div style={{ flex: 1 }}>
-                    <PhoneField value={pricePhone} onChange={v => { setPricePhone(v); setPriceErr(""); }} error={priceErr} />
+                    <PhoneInput value={pricePhone} onChange={v => { setPricePhone(v); setPriceErr(""); }} error={priceErr} />
                   </div>
-                  <OrangeBtn onClick={() => { if (!validPhone(pricePhone)) { setPriceErr("Введите номер"); return; } if (!priceAgree) { setPriceErr("Необходимо согласие"); return; } setPriceDone(true); }}>
+                  <Btn onClick={() => { if (!validPhone(pricePhone)) { setPriceErr("Введите номер"); return; } if (!priceAgree) { setPriceErr("Дайте согласие"); return; } setPriceDone(true); }}>
                     Получить прайс
-                  </OrangeBtn>
+                  </Btn>
                 </div>
                 <Agree checked={priceAgree} onChange={setPriceAgree} />
               </div>
@@ -598,147 +591,112 @@ export default function Index() {
         </div>
       </section>
 
-      {/* ═══ CONSULT ═══════════════════════════════════════════════ */}
-      <section id="consult" style={S.section("#F8F9FA")}>
-        <div style={S.container}>
+      {/* ══ CONSULT ═══════════════════════════════════════════════ */}
+      <section id="consult" style={sec(C.bg)}>
+        <div style={wrap}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 56, alignItems: "center" }}>
-
-            {/* left */}
             <div>
-              <h2 style={{ ...S.sectionTitle, marginBottom: 12 }}>
+              <Label>Консультация</Label>
+              <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", fontWeight: 800, color: C.ink, lineHeight: 1.2, marginBottom: 14 }}>
                 Получите экспертную консультацию по всем вопросам
               </h2>
-              <p style={{ fontSize: 16, fontWeight: 700, color: "#FF6B00", marginBottom: 28 }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: C.accent, marginBottom: 28 }}>
                 Первая консультация с обсуждением вашего проекта — БЕСПЛАТНО
               </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {[
-                  "Разберём вашу нишу и целевую аудиторию",
-                  "Покажем стоимость заявки в вашем регионе",
-                  "Определим оптимальный рекламный бюджет",
-                  "Разработаем стратегию продвижения на Авито",
-                  "Ответим на все вопросы по настройке аккаунта",
+                  "Познакомимся и разберём вашу задачу, цели и текущую ситуацию",
+                  "Анализируем ваши товары/услуги и целевую аудиторию",
+                  "Оценим текущие объявления (если есть) и найдём точки роста",
+                  "Обсудим инструменты и стратегии продвижения на Авито",
+                  "Ответим на вопросы и подготовим персональный план действий",
                 ].map((item, i) => (
                   <div key={item} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                    <span style={{ fontWeight: 900, fontSize: 13, color: "#FF6B00", minWidth: 28, paddingTop: 2 }}>/{String(i + 1).padStart(2, "0")}</span>
-                    <span style={{ fontSize: 15, color: "#333", lineHeight: 1.5 }}>{item}</span>
+                    <span style={{ fontWeight: 900, fontSize: 12, color: C.accent, minWidth: 28, paddingTop: 2, fontFamily: font }}>/{String(i + 1).padStart(2, "0")}</span>
+                    <span style={{ fontSize: 14, color: C.ink2, lineHeight: 1.55 }}>{item}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* right — form */}
-            <div style={{ background: "#fff", borderRadius: 24, padding: 36, boxShadow: "0 8px 40px rgba(0,0,0,0.08)" }}>
-              {consultDone ? (
-                <div style={{ textAlign: "center", padding: "24px 0" }}>
-                  <span style={{ fontSize: 48 }}>✅</span>
-                  <h3 style={{ fontSize: 22, fontWeight: 800, color: "#1A1A1A", marginTop: 16, marginBottom: 8 }}>Отлично!</h3>
-                  <p style={{ color: "#666" }}>Свяжемся с вами в ближайшее время</p>
-                </div>
-              ) : (
+            <div style={{ background: C.white, borderRadius: 24, padding: 36, boxShadow: "0 8px 40px rgba(0,0,0,0.06)", border: `1px solid ${C.border}` }}>
+              {cDone ? <SuccessBox /> : (
                 <>
-                  <h3 style={{ fontSize: 20, fontWeight: 800, color: "#1A1A1A", marginBottom: 6, lineHeight: 1.3 }}>
+                  <h3 style={{ fontSize: 19, fontWeight: 800, color: C.ink, marginBottom: 8, lineHeight: 1.35 }}>
                     Узнайте, сколько денег на рекламе вы можете сэкономить с Авито
                   </h3>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
-                    <Icon name="Clock" size={14} style={{ color: "#aaa" }} />
-                    <span style={{ fontSize: 13, color: "#aaa" }}>Отвечаю в течение 15 минут</span>
+                    <Icon name="Clock" size={14} style={{ color: C.muted }} />
+                    <span style={{ fontSize: 13, color: C.muted }}>Отвечаю в течение 15 минут</span>
                   </div>
-
                   <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 4 }}>
-                    <input
-                      value={consultName}
-                      onChange={e => setConsultName(e.target.value)}
-                      placeholder="Ваше имя"
-                      style={{ width: "100%", padding: "14px 16px", borderRadius: 12, border: "1.5px solid #E5E5E5", background: "#F5F5F5", fontSize: 15, fontFamily: "Montserrat, sans-serif", outline: "none", color: "#1A1A1A", boxSizing: "border-box" }}
-                      onFocus={e => { e.target.style.borderColor = "#FF6B00"; }}
-                      onBlur={e => { e.target.style.borderColor = "#E5E5E5"; }}
+                    <input value={cName} onChange={e => setCName(e.target.value)} placeholder="Ваше имя"
+                      style={{ width: "100%", padding: "13px 14px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: C.bg, fontSize: 14, fontFamily: font, outline: "none", color: C.ink, boxSizing: "border-box", transition: "border-color .2s" }}
+                      onFocus={e => { e.target.style.borderColor = C.accent; e.target.style.background = C.white; }}
+                      onBlur={e => { e.target.style.borderColor = C.border; e.target.style.background = C.bg; }}
                     />
-                    <PhoneField value={consultPhone} onChange={v => { setConsultPhone(v); setConsultPhoneErr(""); }} error={consultPhoneErr} />
+                    <PhoneInput value={cPhone} onChange={v => { setCPhone(v); setCPhoneErr(""); }} error={cPhoneErr} />
                   </div>
-
-                  <Agree checked={consultAgree} onChange={setConsultAgree} />
-
+                  <Agree checked={cAgree} onChange={setCAgree} />
                   <div style={{ marginTop: 20 }}>
-                    <OrangeBtn full onClick={() => {
-                      if (!consultName.trim()) return;
-                      if (!validPhone(consultPhone)) { setConsultPhoneErr("Введите корректный номер"); return; }
-                      if (!consultAgree) { setConsultPhoneErr("Необходимо согласие"); return; }
-                      setConsultDone(true);
-                    }}>
-                      Получить консультацию
-                    </OrangeBtn>
+                    <Btn full onClick={() => {
+                      if (!cName.trim()) return;
+                      if (!validPhone(cPhone)) { setCPhoneErr("Введите корректный номер"); return; }
+                      if (!cAgree) { setCPhoneErr("Дайте согласие"); return; }
+                      setCDone(true);
+                    }}>Получить консультацию</Btn>
                   </div>
                 </>
               )}
             </div>
-
           </div>
         </div>
       </section>
 
-      {/* ═══ FOOTER ════════════════════════════════════════════════ */}
-      <footer style={{ background: "#0A1A3A", color: "#fff", padding: "56px 0 0" }}>
-        <div style={S.container}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 40, paddingBottom: 48 }}>
-
-            {/* col 1 */}
+      {/* ══ FOOTER ════════════════════════════════════════════════ */}
+      <footer style={{ background: C.dark, color: "#fff", padding: "60px 0 0" }}>
+        <div style={wrap}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 40, paddingBottom: 48 }}>
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #FF6B00, #e55a00)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 12, color: "#fff" }}>ОК</div>
-                <span style={{ fontWeight: 800, fontSize: 16 }}>Олег Кошкаров</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 9, background: `linear-gradient(135deg, ${C.accent}, ${C.accentL})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 11, color: "#fff" }}>ОК</div>
+                <span style={{ fontWeight: 800, fontSize: 15 }}>Олег Кошкаров</span>
               </div>
-              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.7 }}>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.7 }}>
                 Ваш надёжный партнёр для бизнеса в интернет-маркетинге
               </p>
             </div>
-
-            {/* col 2 */}
             <div>
-              <h4 style={{ fontWeight: 700, marginBottom: 16, fontSize: 14, textTransform: "uppercase", letterSpacing: 1, color: "rgba(255,255,255,0.5)" }}>Контакты</h4>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
-                <span>📍</span>
-                <span style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", lineHeight: 1.6 }}>г. Сочи, ул. Пластунская 123а К3</span>
+              <h4 style={{ fontWeight: 700, fontSize: 12, textTransform: "uppercase", letterSpacing: 1.2, color: "rgba(255,255,255,0.4)", marginBottom: 16 }}>Адрес</h4>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <span style={{ fontSize: 16 }}>📍</span>
+                <span style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>г. Сочи, ул. Пластунская 123а К3</span>
               </div>
             </div>
-
-            {/* col 3 */}
             <div>
-              <h4 style={{ fontWeight: 700, marginBottom: 16, fontSize: 14, textTransform: "uppercase", letterSpacing: 1, color: "rgba(255,255,255,0.5)" }}>Написать напрямую</h4>
+              <h4 style={{ fontWeight: 700, fontSize: 12, textTransform: "uppercase", letterSpacing: 1.2, color: "rgba(255,255,255,0.4)", marginBottom: 16 }}>Написать напрямую</h4>
               <div style={{ display: "flex", gap: 10 }}>
-                <a href="https://t.me/olegkoshkarov" target="_blank" rel="noopener noreferrer"
-                  style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.7)", textDecoration: "none", transition: "all .2s" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(0,136,204,0.3)"; (e.currentTarget as HTMLElement).style.color = "#29b6f6"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.7)"; }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.41 13.993l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.738.566z"/>
-                  </svg>
-                </a>
-                <a href="https://wa.me/79001234567" target="_blank" rel="noopener noreferrer"
-                  style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.7)", textDecoration: "none", transition: "all .2s" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(37,211,102,0.2)"; (e.currentTarget as HTMLElement).style.color = "#4caf50"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.7)"; }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                  </svg>
-                </a>
+                {[
+                  { href: "https://t.me/olegkoshkarov", hover: "#0088cc", svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.41 13.993l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.738.566z"/></svg> },
+                  { href: "https://wa.me/79001234567", hover: "#25D366", svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> },
+                ].map(({ href, hover, svg }) => (
+                  <a key={href} href={href} target="_blank" rel="noopener noreferrer"
+                    style={{ width: 42, height: 42, borderRadius: 11, background: "rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.6)", textDecoration: "none", transition: "all .2s" }}
+                    onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = `${hover}28`; el.style.color = hover; }}
+                    onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.07)"; el.style.color = "rgba(255,255,255,0.6)"; }}
+                  >{svg}</a>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* bottom */}
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", padding: "20px 0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-              © 2024 Олег Кошкаров Marketing. Все права защищены.
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", padding: "20px 0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", lineHeight: 1.6, maxWidth: 560 }}>
+              Сайт не является публичной офертой. Вся информация на сайте носит ознакомительный характер и не является договором оферты. Стоимость и условия уточняются индивидуально.
             </p>
-            <div style={{ display: "flex", gap: 20 }}>
-              <a href="#" style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", textDecoration: "underline" }}>Политика обработки персональных данных</a>
-              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
-                Сайт не является публичной офертой
-              </p>
-            </div>
+            <a href="#" style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", textDecoration: "underline" }}>
+              Политика обработки персональных данных
+            </a>
           </div>
         </div>
       </footer>
